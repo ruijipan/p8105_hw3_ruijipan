@@ -1,0 +1,244 @@
+---
+title: "Visualization and EDA"
+output: word_document
+date: "2022-10-13"
+---
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Visualization and EDA
+
+### Problem 1
+
+This part of thr document records the process of data exploration, analysis and visualization of the 'instacart' dataset in 'p8105.datasets'.
+
+Instacart is an online grocery service that allows you to shop online from local stores. In New York City, partner stores include Whole Foods, Fairway, and The Food Emporium. Instacart offers same-day delivery, and items that users purchase are delivered within 2 hours.
+
+"The Instacart Online Grocery Shopping Dataset 2017" is an anonymized dataset with over 3 million online grocery orders from more than 200,000 Instacart users. However the dataset does not represent a random sampling of products, users, or purchases. Therefore, while the data allow examination of trends in online grocery purchasing, the results may not be generalizable to Instacart users more broadly.
+
+Load the data first:
+
+```{r setup}
+library(p8105.datasets)
+data("instacart")
+df = data.frame(instacart)
+```
+
+See what fields the data contains:
+
+```{r setup, echo=FALSE}
+names(instacart)
+```
+
+Number of observations of the dataset:
+
+```{r df$order_id, echo=FALSE}
+length(df$order_id)
+```
+
+Thus, the dataset is a list of 1,384,617 rows and 15 columns.
+
+Specifically check how many kinds of aisles are included and which aisles have the largest number of orders:
+
+```{r df$aisle, echo=FALSE}
+as.data.frame(table(df$aisle))
+length(df$aisle)
+max(df$aisle)
+```
+
+Draw the frequency statistics chart of aisles whose order quantity exceeds 10000:
+
+```{r df$aisle, echo=FALSE}
+library(ggplot2)
+t = table(df$aisle)
+d = as.data.frame(t[t>10000])
+names(d)[1] = 'Aisle'
+ggplot(data = d,mapping = aes(x = Aisle, y = Freq)) + 
+  geom_col(aes(color = Aisle),alpha = 0.5,position = position_dodge()) +
+  coord_flip()
+
+```
+
+Count and order quantities with aisle category named 'dog food care', 'packaged vegetables fruits' and 'baking ingredients':
+
+```{r setup,echo=FALSE}
+subset(df, aisle=='dog food care' | aisle=='packaged vegetables fruits' | aisle=='baking ingredients',
+       c(product_name,order_number,aisle))
+```
+
+Average order hour for product 'Pink Lady Apples' and 'Coffee Ice Cream':
+
+```{r df}
+sub = subset(df, product_name=='Pink Lady Apples'| product_name=='Coffee Ice Cream', 
+       c(product_name,order_hour_of_day,order_dow))
+group_mean = aggregate(sub$order_hour_of_day,by=list(sub$product_name,sub$order_dow),mean)
+names(group_mean) = c('product_name','order_dow','mean_hour')
+group_mean
+```
+
+### Problem 2
+
+In this part of the document, medical diagnostic data were used for statistical analysis.
+
+Load the data from excel and generate two new variables, weekday and weekend, respectively. When weekday is 1, it means weekday, and when weekday is 0, it means weekend. Fusion in the same way:
+
+```{r setup,echo=TRUE}
+UG = read.csv('./data/accel_data.csv')
+
+UG$weekend = as.integer(UG$day %in% c('Saturday','Sunday'))
+UG$weekday = as.integer(!(UG$day %in% c('Monday','Sunday')))
+UG
+```
+
+Sum all columns of activity.\* to get activity_sumday for each day:
+
+```{r UG,echo=FALSE}
+UG$activity_sumday = rowSums(UG[,-c(1:3)])
+attach(UG)
+UG[c(1:3,1444:1446)]
+```
+
+According to the output results, the number of activities decreased significantly near the weekend.
+
+```{r UG,echo=FALSE}
+library(ggplot2)
+ggplot(data = UG,mapping = aes(x = day_id, y = activity_sumday)) + 
+  geom_col(aes(color = day),alpha = 0.5)
+```
+
+It is also obvious from the figure that the number of activities decreases towards the end of each week.
+
+### Problem 3
+
+The NY NOAA dataset is used in the third part of this paper, and the exploratory analysis of this dataset is presented below.
+
+Load data:
+
+```{r setup}
+library(p8105.datasets)
+data("ny_noaa")
+ny_noaa
+```
+
+The data contains the following fields:
+
+```{r ny_noaa}
+names(ny_noaa)
+```
+
+-   id: Weather station ID
+-   date: Date of observation
+-   prcp: Precipitation (tenths of mm)
+-   snow: Snowfall (mm)
+-   snwd: Snow depth (mm)
+-   tmax: Maximum temperature (tenths of degrees C)
+-   tmin: Minimum temperature (tenths of degrees C)
+
+Number of observations of the dataset:
+
+```{r ny_noaa}
+length(ny_noaa$id)
+```
+
+See how much each field is missing:
+
+```{r ny_noaa}
+sum(is.na(ny_noaa$prcp))/2595176
+sum(is.na(ny_noaa$snow))/2595176
+sum(is.na(ny_noaa$snwd))/2595176
+sum(is.na(ny_noaa$tmax))/2595176
+sum(is.na(ny_noaa$tmin))/2595176
+```
+
+All prcp fields are missing, indeed nearly half of tmax and tmin, and nearly 20% of snow fields are missing.
+
+Remove the prcp field and remove the lines with missing values:
+
+```{r ny_noaa}
+ny_noaa$prcp <- NULL
+names(ny_noaa)
+
+ny_noaa = na.omit(ny_noaa)
+length(ny_noaa$id)
+ny_noaa
+
+```
+
+According to the date field, create new variables "year", "month" and "day" :
+
+```{r ny_noaa}
+ny_noaa$date = as.character(ny_noaa$date)
+data = strsplit(x = ny_noaa$date,split = '-')
+data = as.matrix(do.call(rbind, data))
+ny_noaa$year = data[,1]
+ny_noaa$month = data[,2]
+ny_noaa$day = data[,3]
+
+```
+
+Plot the distribution of the snowfall variable:
+
+```{r ny_noaa}
+library(ggplot2)
+
+ggplot(data = ny_noaa,mapping = aes(snow)) + 
+  geom_density(kernel='gaussian')
+
+```
+
+Therefore, for snowfall, the most common variable value should be 0.
+
+Three fields are extracted from the data to form a sub-dataset:
+
+```{r ny_noaa}
+sub_maxtem = subset(ny_noaa,month=='01'|month=='07',c(year,month,tmax))
+sub_maxtem = aggregate(sub_maxtem$tmax,by = list(sub_maxtem$month,sub_maxtem$year),max)
+names(sub_maxtem) = c('month','year','tmax')
+sub_maxtem
+
+library(ggplot2)
+
+ggplot(data = sub_maxtem,aes(x=year,y=as.integer(tmax),fill=month)) + 
+  geom_bar(stat = "identity",position = position_dodge()) + 
+ 
+  coord_flip()
+
+```
+
+As shown in the figure, no matter the maximum temperature in January or July, its value is relatively uniform, so intuitively there is no outlier.
+
+The following is a plot of the distribution density of tmin and tmax from the whole dataset:
+
+```{r ny_noaa}
+
+library(tidyr)
+attach(ny_noaa)
+ny_noaa_long = gather(ny_noaa,min_max,tempure,tmax:tmin)
+
+
+library(ggplot2)
+
+ggplot(data = ny_noaa_long,aes(x=date,y=as.integer(tempure),fill=min_max)) + 
+  geom_bar(stat = "identity",position = position_dodge()) + 
+ 
+  coord_flip()
+
+```
+
+Plot the distribution of snowfall greater than 0 and less than 100:
+
+```{r ny_noaa}
+
+attach(ny_noaa)
+sub_snowfall = subset(ny_noaa,snow>0&snow<100,c(year,snow))
+sub_snowfall
+
+
+library(ggplot2)
+
+ggplot(data = sub_snowfall,mapping = aes(snow)) + 
+  geom_density(kernel='gaussian',position = position_dodge())
+
+```
